@@ -19,13 +19,13 @@ public class Msisdn {
 		}
 		return instance;
 	}
-
-	public String getMsisdn(String currentMsisdn) {
+	
+	public String getMsisdn(String currentMsisdn, boolean partial) {
 		String newMsisdn = "";
 		if (storedMsisdns.containsKey(currentMsisdn)) {
 			newMsisdn = storedMsisdns.get(currentMsisdn);
 		} else {
-			newMsisdn = getNewNumber();
+			newMsisdn = getNewNumber(currentMsisdn, partial);
 			storedMsisdns.put(currentMsisdn, newMsisdn);
 		}
 
@@ -35,7 +35,17 @@ public class Msisdn {
 		return newMsisdn;
 	}
 
-	private String getNewNumber() {
-		return "07700" + (int) (Math.random() * 999998 + 1);
+	public String getMsisdn(String currentMsisdn) {
+		return getMsisdn(currentMsisdn, false);
+	}
+
+	private String getNewNumber(String origMsisdn, boolean partial) {
+		if (partial) {
+			String substring = origMsisdn.substring(Math.max(origMsisdn.length() - 3, 0));
+			//System.out.println("substring=" + substring);
+			return "07700" + ((int) (Math.random() * 998 + 1)) + substring;
+		}else {
+			return "07700" + (int) (Math.random() * 999998 + 1);
+		}
 	}
 }

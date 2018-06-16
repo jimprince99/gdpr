@@ -12,15 +12,16 @@ public class Gdpr {
 
 	private static String filename = null;
 	private static FileHandler fileTxt;
+	private static boolean partial;
 	private static SimpleFormatter formatterTxt;
 	private static Logger logger = null;
 
 	public static void main(String[] args) {
         getLogger();
-
+        
 		getArgs(args);
 		logger.info("This filename : " + filename);
-		GdprWorker gdpr = new GdprWorker(filename, logger);
+		GdprWorker gdpr = new GdprWorker(filename, logger, partial);
 
 		Thread gdrpThread = new Thread(gdpr, "gdpr1");
 		gdrpThread.start();
@@ -32,7 +33,7 @@ public class Gdpr {
 		
 		String result = gdpr.getResultString();
 		if (isEmpty(result) != null) {
-			logger.info(result);
+			System.err.println(result);
 			System.exit(-1);
 		} else {
 			System.exit(0);
@@ -43,7 +44,7 @@ public class Gdpr {
 		logger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
         try {
-			fileTxt = new FileHandler("gdpr,log");
+			fileTxt = new FileHandler("gdpr.log");
 		} catch (SecurityException e) {
 			System.err.println("SecurityException: Unable to open logger");
 		} catch (IOException e) {
@@ -69,16 +70,16 @@ public class Gdpr {
 			switch (arg) {
 			case "-v":
 		        logger.setLevel(Level.WARNING);
-		        System.out.println("logger= + logger.getLevel()");
 				break;
 				
 			case "-vv":
 		        logger.setLevel(Level.INFO);
-		        System.out.println("setting logging to finest");
-				System.out.println("logger = " + logger.toString());
-
 				break;
-
+				
+			case "-p":
+		        partial = true;
+				break;
+				
 			default:
 				filename = arg;
 			}
@@ -89,6 +90,8 @@ public class Gdpr {
 		System.err.println("grdp : -v <filename>");
 		System.err.println("       -v verbose logging");
 		System.err.println("       -vv very verbose logging");
+		System.err.println("       -p partial anonyousing, leave the last three digits unchanged");
+		System.exit(-1);
 	}
 	
 	private static Predicate<String> isEmpty(String result) {

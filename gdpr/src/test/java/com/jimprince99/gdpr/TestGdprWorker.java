@@ -31,7 +31,7 @@ public class TestGdprWorker {
 	 */
 	@Test
 	public void test001() {
-		GdprWorker worker = new GdprWorker("src/test/resources/a1-edited.pcap", logger);
+		GdprWorker worker = new GdprWorker("src/test/resources/a1-edited.pcap", logger, false);
 		assertNotNull(worker);
 		
 		assertTrue(worker.filenameValid("src/test/resources/a1-edited.pcap"));
@@ -44,7 +44,7 @@ public class TestGdprWorker {
 	 */
 	@Test
 	public void test002() {
-		GdprWorker worker = new GdprWorker("src/test/resources/a1-edited.pcap", logger);
+		GdprWorker worker = new GdprWorker("src/test/resources/a1-edited.pcap", logger,false);
 		assertNotNull(worker);
 		
 		assertEquals("", worker.getResultString());
@@ -55,7 +55,7 @@ public class TestGdprWorker {
 	 */
 	@Test
 	public void test003() {
-		GdprWorker worker = new GdprWorker("src/test/resources/a1-edited.pcap", logger);
+		GdprWorker worker = new GdprWorker("src/test/resources/a1-edited.pcap", logger, false);
 		assertNotNull(worker);
 		
 		assertTrue(worker.fileExists("src/test/resources/a1-edited.pcap"));
@@ -68,7 +68,7 @@ public class TestGdprWorker {
 	 */
 	@Test
 	public void test004() {
-		GdprWorker worker = new GdprWorker("src/test/resources/a1-edited.pcap", logger);
+		GdprWorker worker = new GdprWorker("src/test/resources/a1-edited.pcap", logger, false);
 		assertNotNull(worker);
 		
 		Pcap pcap = worker.getInputStream();
@@ -81,11 +81,11 @@ public class TestGdprWorker {
 	 */
 	@Test
 	public void test005() {
-		GdprWorker worker1 = new GdprWorker("bob", logger);
+		GdprWorker worker1 = new GdprWorker("bob", logger, false);
 		assertNotNull(worker1);
 		assertNull(worker1.getOutputFilename());
 		
-		GdprWorker worker2 = new GdprWorker("src/test/resources/a1-edited.pcap", logger);
+		GdprWorker worker2 = new GdprWorker("src/test/resources/a1-edited.pcap", logger, false);
 		assertNotNull(worker2);
 		assertNotNull(worker2.getOutputFilename());
 
@@ -96,11 +96,11 @@ public class TestGdprWorker {
 	 */
 	@Test
 	public void test006() {
-		GdprWorker worker1 = new GdprWorker("bob", logger);
+		GdprWorker worker1 = new GdprWorker("bob", logger, false);
 		assertNotNull(worker1);
 		assertNull(worker1.getOutputStream());
 		
-		GdprWorker worker2 = new GdprWorker("src/test/resources/a1-edited.pcap", logger);
+		GdprWorker worker2 = new GdprWorker("src/test/resources/a1-edited.pcap", logger, false);
 		assertNotNull(worker2);
 		worker2.getInputStream();
 		assertNotNull(worker2.getOutputStream());

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.function.Predicate;
 import java.util.logging.Logger;
 import io.pkts.Pcap;
 import io.pkts.PcapOutputStream;
@@ -11,6 +12,7 @@ import io.pkts.framer.FramingException;
 
 public class GdprWorker implements Runnable {
 	private String inputFilename = "";
+	private boolean partial;
 	private String outputFilename = "";
 	private File inputFile;
 	private File outputFile;
@@ -23,8 +25,9 @@ public class GdprWorker implements Runnable {
 	 * Initialisation
 	 * 
 	 */
-	GdprWorker(String inputFileName, Logger logger) {
+	GdprWorker(String inputFileName, Logger logger, boolean partial) {
 		this.inputFilename = inputFileName;
+		this.partial = partial;
 		this.logger = logger;
 	}
 
@@ -44,14 +47,15 @@ public class GdprWorker implements Runnable {
 	public String getResultString() {
 		return resultString;
 	}
+	
+	Predicate<String> isEmpty = s -> {return (s == null || s.equals("") ); };
 
 	protected Pcap getInputStream() {
-
-//		if (!this.inputFilename.toLowerCase().endsWith(".pcap")) {
-//			severeLogger("Invalid filename = " + this.inputFilename);
-//
-//			return null;
-//		}
+		
+		if (isEmpty.test(this.inputFilename)) {
+			this.resultString = "Must supply a pcap file to process!";
+			return null;
+		}
 		this.inputFile = new File(this.inputFilename);
 
 		try {
@@ -59,6 +63,8 @@ public class GdprWorker implements Runnable {
 		} catch (FileNotFoundException e) {
 			severeLogger("FileNotFound for filename=" + this.inputFilename, e);
 			return null;
+		} catch (IllegalArgumentException e) {
+			severeLogger("Unable to parse pcap file " + this.inputFilename + ". Could this be a pcap-ng format file?\n", e);
 		} catch (IOException e) {
 			severeLogger("Unable to open pcap file " + this.inputFilename, e);
 			return null;
@@ -126,6 +132,7 @@ public class GdprWorker implements Runnable {
 		GdprPacketHandler packetHandler = new GdprPacketHandler();
 		packetHandler.setOutputStream(this.outputStream);
 		packetHandler.setLogger(this.logger);
+		packetHandler.setPartial(this.partial);
 		
 		try {
 			this.pcapInputStream.loop(packetHandler);

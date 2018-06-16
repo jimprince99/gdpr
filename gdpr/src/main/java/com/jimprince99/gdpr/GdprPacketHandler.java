@@ -21,11 +21,15 @@ import io.pkts.packet.sip.address.Address;
 import io.pkts.packet.sip.address.SipURI;
 import io.pkts.packet.sip.header.AddressParametersHeader;
 import io.pkts.packet.sip.header.SipHeader;
+import io.pkts.packet.sip.impl.SipInitialLine;
+import io.pkts.packet.sip.impl.SipRequestLine;
+import io.pkts.packet.sip.impl.SipResponseLine;
 import io.pkts.protocol.Protocol;
 import io.pkts.packet.sip.address.URI;
 
 public class GdprPacketHandler implements PacketHandler {
 	private Logger logger = null;
+	private boolean partial;
 	private String resultString = "";
 	private PcapOutputStream outputStream = null;
 	private int packetCount = 0;
@@ -220,10 +224,16 @@ public class GdprPacketHandler implements PacketHandler {
 		// if this is too short to be an MSISDN
 		if (user.length() < 9)
 			return address;
+		
+		if (!user.matches("\\d*")) {
+			logger.info("Returning as user is not all digits");
+			return address;
+
+		}
 
 		// Time to make the new From Header
 		Msisdn msisdn = Msisdn.getInstance();
-		String newUserPart = msisdn.getMsisdn(user);
+		String newUserPart = msisdn.getMsisdn(user, partial);
 		logger.info("Matching orig=" + user + " with new=" + newUserPart);
 
 		io.pkts.packet.sip.address.Address.Builder newAddressBuilder = address.copy();
@@ -274,33 +284,97 @@ public class GdprPacketHandler implements PacketHandler {
 		handleSipMessage(sipMessage, ipPacket, udpPacket);
 	}
 
-	// /*
-	// * Update the packet be removing any MSISDNs
-	// */
-	// protected void handleUDPSipPacket(Packet ipPacket) {
-	//
-	// if (isIrrelevantMethods(ipPacket))
-	// return;
-	//
-	// UDPPacket udpPacket = getUDPPacket(ipPacket);
-	// if (udpPacket == null)
-	// return;
-	//
-	// SipMessage sipMessage = getSipMessage(udpPacket, ipPacket);
-	// if (sipMessage == null)
-	// return;
-
 	protected void handleSipMessage(SipMessage sipMessage, Packet ipPacket, Packet p) {
-
 		logger.info("got SipMessage=" + sipMessage.toString());
+		SipInitialLine sipInitialLine = sipMessage.initialLine();
+		Buffer method = null;
+		String protocol = null;
+		SipURI newSipUri = null;
 		StringBuilder sb = new StringBuilder();
-		sb.append(sipMessage.initialLine() + "\r\n\r\n");
-		SipMessage tempSipMessage = null;
+		
+		if (sipInitialLine.isResponseLine()) {
+			// nothing to correct here			
+			logger.info("Got SIP Response message. Nothing to correct in the Request URI");
+			sb.append(sipInitialLine.toString() + "\r\n\r\n");
+		} else {
+			// replace any MSISDN in the Request URL
+			SipRequestLine sipRequestLine = sipInitialLine.toRequestLine();
+			logger.info("sipRequestLine=" + sipRequestLine);
 
+			method = sipRequestLine.getMethod();
+			URI requestURL = sipRequestLine.getRequestUri();
+			logger.info("requestURL=" + requestURL.toString());
+			
+			// extract the protocol "SIP/2.0"
+			// but there's no method to get this field
+			Buffer wholeLine = sipRequestLine.getBuffer();
+			String wholeLineString = wholeLine.toString();
+			String[] parts = wholeLineString.split(" ");
+			if (parts.length == 3) {
+				protocol = parts[2];
+				logger.info("protocol=" + protocol);
+			}
+			SipURI sipUri = requestURL.toSipURI();
+			
+			Optional<Buffer> userBufferOptional = sipUri.getUser();
+			Buffer userBuffer = null;
+			boolean failed = false;
+			logger.info("userBufferOptional=" + userBufferOptional.toString());
+
+			if (userBufferOptional.isPresent()) {
+				try {
+					userBuffer = userBufferOptional.get();
+				} catch (java.util.NoSuchElementException e) {
+					failed = true;
+				}
+				if (failed == true) {
+					logger.info("userBufferOptional.get() failed");
+					sb.append(sipInitialLine.toString() + "\r\n\r\n");
+				} else {
+
+					String user = userBuffer.toString();
+					logger.info("Found userPart=" + user + " from R-URI");
+
+					// if this is too short to be an MSISDN
+					if (user.length() < 9) {
+						sb.append(sipInitialLine.toString());
+					} else {
+						// Time to make the new From Header
+						Msisdn msisdn = Msisdn.getInstance();
+						
+						// if this is too short to be an MSISDN
+						String newUserPart = null;
+						if ( (!user.matches("\\d*"))
+						||   (user.length() < 9   ) )
+						{
+							logger.info("Returning as user " + user + " is not all digits, or too short");
+							newUserPart = user;
+						} else {
+							newUserPart = msisdn.getMsisdn(user);
+							logger.info("Matching orig=" + user + " with new=" + newUserPart);
+						}
+
+						io.pkts.packet.sip.address.SipURI.Builder newRequestURIBuilder = sipUri.copy();
+						newRequestURIBuilder.withUser(newUserPart);
+						newSipUri = newRequestURIBuilder.build();
+
+						sb.append(method + " ");
+						sb.append(newSipUri + " ");
+						sb.append(protocol + "\r\n\r\n");
+						logger.info("Created new URI part=" + sb.toString());
+					}
+				}
+			} else {// else no User part
+				logger.info("userBufferOptional is not present");
+				sb.append(sipInitialLine.toString() + "\r\n\r\n");
+			}
+		}
+				
+		SipMessage tempSipMessage = null;
 		try {
 			tempSipMessage = SipMessage.frame(sb.toString());
 		} catch (SipParseException | IOException e1) {
-			warningLogger("Unable to create new SipMessage from " + sb.toString(), e1);
+			warningLogger("Unable to create a new SipMessage from " + sb.toString(), e1);
 			writeWithException(ipPacket);
 			return;
 		}
@@ -337,9 +411,10 @@ public class GdprPacketHandler implements PacketHandler {
 
 	protected void setLogger(Logger logger) {
 		this.logger = logger;
-		System.out.println("logger = " + logger.toString());
-		System.out.println("logger=" + logger.getLevel());
-
+	}
+	
+	protected void setPartial(boolean partial) {
+		this.partial = partial;
 	}
 
 	protected PcapOutputStream getOutputStream() {
