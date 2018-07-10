@@ -40,6 +40,7 @@ public class UI extends Application {
 	private static Logger logger = null;
 	Label errorLabel1 = null;
 	TextField errorLabel2 = null;
+	Level desiredLogLevel = Level.OFF;
 
 	public static void main(String[] args) {
 
@@ -130,19 +131,26 @@ public class UI extends Application {
 		public void handle(javafx.scene.input.MouseEvent e) {
 			// call conversion method
 	        getLogger();
+	        logger.setLevel(desiredLogLevel);
 
-			logger.info("calling gdpr with sourceFilename=" + sourceFilename
-					+ "partialConversion=" + partialConversion);
+			logger.info("Calling gdpr with sourceFilename=" + sourceFilename
+					+ ", partialConversion=" + partialConversion);
 			GdprWorker gdpr = new GdprWorker(sourceFilename, logger, partialConversion);
+			logger.info("created class, gdpr=" + gdpr.toString());
 
 			Thread gdrpThread = new Thread(gdpr, "gdpr1");
+			logger.info("created thread");
+
 			gdrpThread.start();
-			
+			logger.info("started");
+
 			try {
 				gdrpThread.join();
 			} catch (InterruptedException e2) {
 			}
 			
+			logger.info("joined");
+
 			String result = gdpr.getResultString();
 
 			if (isEmpty.test(result)) {
@@ -161,14 +169,14 @@ public class UI extends Application {
 			
 			switch (logLevel) {
 			case "Normal":
-		        logger.setLevel(Level.WARNING);
+				desiredLogLevel = Level.WARNING;
 				break;
 				
 			case "Full":
-		        logger.setLevel(Level.INFO);
+				desiredLogLevel = Level.INFO;
 				break;
 				
-				default: logger.setLevel(Level.OFF);
+				default: desiredLogLevel = Level.OFF;
 			}
 		}
 	};

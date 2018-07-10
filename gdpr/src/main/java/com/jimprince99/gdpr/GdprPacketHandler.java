@@ -41,6 +41,8 @@ public class GdprPacketHandler implements PacketHandler {
 	 */
 	public boolean nextPacket(Packet packet) {
 		packetCount++;
+		logger.info("=========== Next packet (" + packetCount + ") ================" );
+
 		Protocol protocol = getProtocol(packet);
 		logger.info("packet " + packetCount + ", protocol=" + protocol.toString());
 
@@ -223,12 +225,17 @@ public class GdprPacketHandler implements PacketHandler {
 		
 		// if this is too short to be an MSISDN
 		if (user.length() < 9)
+		{
+			logger.info("returning as address < 9");
 			return address;
+		} else {
+			logger.info("not too short");
+		}
 		
-		if (!user.matches("\\d*")) {
+		if ( (!(user.matches("\\d*")) && !(user.matches("\\+\\d*"))) ) {
+		//if (!(user.matches("\\d*"))) {
 			logger.info("Returning as user is not all digits");
 			return address;
-
 		}
 
 		// Time to make the new From Header

@@ -26,6 +26,7 @@ public class GdprWorker implements Runnable {
 	 * 
 	 */
 	GdprWorker(String inputFileName, Logger logger, boolean partial) {
+		logger.info("into GdprWorker");
 		this.inputFilename = inputFileName;
 		this.partial = partial;
 		this.logger = logger;
@@ -66,6 +67,12 @@ public class GdprWorker implements Runnable {
 		} catch (IllegalArgumentException e) {
 			severeLogger("Unable to parse pcap file " + this.inputFilename + ". Could this be a pcap-ng format file?\n", e);
 		} catch (IOException e) {
+			severeLogger("Unable to open pcap file " + this.inputFilename, e);
+			return null;
+		} catch (IndexOutOfBoundsException e) {
+			severeLogger("Unable to open pcap file " + this.inputFilename, e);
+			return null;
+		} catch (Exception e) {
 			severeLogger("Unable to open pcap file " + this.inputFilename, e);
 			return null;
 		}
@@ -117,6 +124,7 @@ public class GdprWorker implements Runnable {
 	}
 
 	public void run() {
+		logger.info("===============  Start of next packet =================");
 
 		// get input file
 		if (getInputStream() == null) {
@@ -135,7 +143,22 @@ public class GdprWorker implements Runnable {
 		packetHandler.setPartial(this.partial);
 		
 		try {
-			this.pcapInputStream.loop(packetHandler);
+
+			boolean complete = false;
+			while (!complete) {
+				try {
+					//logger.info("===============  Start of next packet =================");
+					complete = true;
+					this.pcapInputStream.loop(packetHandler);
+				} catch (IllegalArgumentException e) {
+					// if we have an IllegalArgumentException then we have 
+					// read an invalid packet. We will still process the packet
+					// move on to the next one.
+					complete = false;
+					//e.printStackTrace();
+					// do nothing - skip this error and continue
+				}
+			}
 		} catch (FramingException e) {
 			severeLogger("Framing Exception ", e);
 		} catch (IOException e) {
